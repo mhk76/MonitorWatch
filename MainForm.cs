@@ -78,30 +78,64 @@ namespace MonitorWatch
 		[DllImport("user32.dll", EntryPoint = "SetWindowPos")]
 		private static extern IntPtr SetWindowPos(IntPtr hWnd, int hWndInsertAfter, int x, int Y, int cx, int cy, int wFlags);
 
+		[DllImport("user32.dll")]
+		static extern bool UpdateWindow(IntPtr hWnd);
+
 
 		private Dictionary<IntPtr, WindowTracker> _windowList = new Dictionary<IntPtr, WindowTracker>();
-
-		private string _display;
+		private Timer _timer = new Timer();
+		private int[] __intervals = new int[] { 250, 500, 1000, 2000, 5000, 10000, 30000, 60000 };
+		private string _display = null;
 
 		public MainForm()
 		{
 			InitializeComponent();
+
+			cmbInterval.SelectedIndex = 2;
+			WindowState = FormWindowState.Minimized;
 		}
 
 		private void MainForm_Load(object sender, EventArgs e)
 		{
 			UpdateDisplay();
 
-			Timer timer = new Timer();
+			_timer.Tick += new EventHandler(OnTimer);
+			_timer.Interval = __intervals[cmbInterval.SelectedIndex];
+			_timer.Enabled = true;
 
-			timer.Tick += new EventHandler(OnTimer);
-			timer.Interval = 1000;
-			timer.Enabled = true;
+			OnTimer(null, null);
+		}
+
+		private void cmbInterval_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			_timer.Interval = __intervals[cmbInterval.SelectedIndex];
+		}
+
+		private void btnClose_Click(object sender, EventArgs e)
+		{
+			if (MessageBox.Show("Close MonitorWatch?", "MonitorWatch", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			{
+				Application.Exit();
+			}
+		}
+
+		private void btnHide_Click(object sender, EventArgs e)
+		{
+			WindowState = FormWindowState.Minimized;
+			Hide();
+		}
+
+		private void notifyIcon_Click(object sender, EventArgs e)
+		{
+			WindowState = FormWindowState.Normal;
+			Show();
 		}
 
 		private void OnTimer(object sender, EventArgs e)
 		{
-			foreach (IntPtr hWnd in FindWindows())
+			List<IntPtr> windowList = FindWindows();
+
+			foreach (IntPtr hWnd in windowList)
 			{
 				if (_windowList.ContainsKey(hWnd))
 				{
@@ -118,9 +152,29 @@ namespace MonitorWatch
 					);
 				}
 			}
+
+			if (_windowList.Count > windowList.Count)
+			{
+				List<IntPtr> dropList = new List<IntPtr>();
+
+				foreach (KeyValuePair<IntPtr, WindowTracker> window in _windowList)
+				{
+					if (!windowList.Contains(window.Key))
+					{
+						dropList.Add(window.Key);
+					}
+				}
+
+				foreach (IntPtr hWnd in dropList)
+				{
+					_windowList.Remove(hWnd);
+				}
+			}
+
+			lblWindowCount.Text = _windowList.Count.ToString();
 		}
 
-		public static IEnumerable<IntPtr> FindWindows()
+		public static List<IntPtr> FindWindows()
 		{
 			List<IntPtr> windowList = new List<IntPtr>();
 
@@ -156,6 +210,7 @@ namespace MonitorWatch
 		private void UpdateDisplay()
 		{
 			StringBuilder display = new StringBuilder();
+			int counter = 0;
 
 			EnumDisplayMonitors(
 				IntPtr.Zero,
@@ -171,10 +226,14 @@ namespace MonitorWatch
 					display.Append(pRect.bottom);
 					display.Append(';');
 
+					++counter;
+
 					return true;
 				},
 				0
 			);
+
+			lblDisplayCount.Text = counter.ToString();
 
 			_display = display.ToString();
 		}
@@ -222,6 +281,7 @@ namespace MonitorWatch
 						windowPlacement.flags = WPF_ASYNCWINDOWPLACEMENT;
 						windowPlacement.showCmd = ShowWindowCommands.Restore;
 						SetWindowPlacement(_hWnd, ref windowPlacement);
+						UpdateWindow(_hWnd);
 						windowPlacement.showCmd = ShowWindowCommands.ShowMaximized;
 						SetWindowPlacement(_hWnd, ref windowPlacement);
 						GetWindowPlacement(_hWnd, ref windowPlacement);
@@ -239,6 +299,7 @@ namespace MonitorWatch
 					windowPlacement.flags = WPF_ASYNCWINDOWPLACEMENT;
 					windowPlacement.showCmd = ShowWindowCommands.Restore;
 					SetWindowPlacement(_hWnd, ref windowPlacement);
+					UpdateWindow(_hWnd);
 					windowPlacement.showCmd = ShowWindowCommands.ShowMaximized;
 					SetWindowPlacement(_hWnd, ref windowPlacement);
 				}
