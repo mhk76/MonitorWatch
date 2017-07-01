@@ -1,2 +1,2 @@
 # MonitorWatch
-Track window positions and restore them when a monitor is plugged or unplugged
+Tracks window positions and restores them when a monitor is plugged or unplugged
