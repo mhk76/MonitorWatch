@@ -10,21 +10,16 @@ namespace MonitorWatch
 {
 	public partial class MainForm : Form
 	{
-		const int WM_DESTROY = 0x0002;
-		const int WM_SIZE = 0x0005;
 		const int WM_DISPLAYCHANGE = 0x007e;
 
-		const int GWL_STYLE = (-16);
+		const int GWL_STYLE = -16;
 
-		const uint WS_EX_WINDOW = 0x10080000;
+		const uint WS_VISIBLE = 0x10000000;
+		const uint WS_SYSMENU = 0x00080000;
+		const uint WS_CAPTION = 0x00C00000;
+		const uint WS_EX_WINDOW = WS_VISIBLE | WS_CAPTION;
 
-		const uint SWP_NOACTIVATE = 0x0010;
-		const uint SWP_NOZORDER = 0x0004;
-
-		const uint WPF_RESTORETOMAXIMIZED = 0x0002;
 		const uint WPF_ASYNCWINDOWPLACEMENT = 0x0004;
-
-		const int WH_CALLWNDPROC = 0x0004;
 
 		public enum ShowWindowCommands : int
 		{
@@ -74,9 +69,6 @@ namespace MonitorWatch
 
 		[DllImport("user32.dll", SetLastError = true)]
 		private static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
-
-		[DllImport("user32.dll", EntryPoint = "SetWindowPos")]
-		private static extern IntPtr SetWindowPos(IntPtr hWnd, int hWndInsertAfter, int x, int Y, int cx, int cy, int wFlags);
 
 		[DllImport("user32.dll")]
 		static extern bool UpdateWindow(IntPtr hWnd);
