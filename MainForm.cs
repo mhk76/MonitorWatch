@@ -82,7 +82,8 @@ namespace MonitorWatch
 		static extern bool UpdateWindow(IntPtr hWnd);
 
 
-		private Dictionary<IntPtr, WindowTracker> _windowList = new Dictionary<IntPtr, WindowTracker>();
+		private List<IntPtr> _windowList = new List<IntPtr>();
+		private Dictionary<IntPtr, WindowTracker> _trackerList = new Dictionary<IntPtr, WindowTracker>();
 		private Timer _timer = new Timer();
 		private int[] __intervals = new int[] { 250, 500, 1000, 2000, 5000, 10000, 30000, 60000 };
 		private string _display = null;
@@ -102,8 +103,6 @@ namespace MonitorWatch
 			_timer.Tick += new EventHandler(OnTimer);
 			_timer.Interval = __intervals[cmbInterval.SelectedIndex];
 			_timer.Enabled = true;
-
-			OnTimer(null, null);
 		}
 
 		private void cmbInterval_SelectedIndexChanged(object sender, EventArgs e)
@@ -133,17 +132,13 @@ namespace MonitorWatch
 
 		private void OnTimer(object sender, EventArgs e)
 		{
-			List<IntPtr> windowList = FindWindows();
+			List<IntPtr> _windowList = FindWindows();
 
-			foreach (IntPtr hWnd in windowList)
+			foreach (IntPtr hWnd in _windowList)
 			{
-				if (_windowList.ContainsKey(hWnd))
+				if (!_trackerList.ContainsKey(hWnd))
 				{
-					_windowList[hWnd].CheckPlacement(_display);
-				}
-				else
-				{
-					_windowList.Add(
+					_trackerList.Add(
 						hWnd,
 						new WindowTracker(
 							_display,
@@ -153,21 +148,15 @@ namespace MonitorWatch
 				}
 			}
 
-			if (_windowList.Count > windowList.Count)
+			foreach (IntPtr hWnd in _windowList)
 			{
-				List<IntPtr> dropList = new List<IntPtr>();
-
-				foreach (KeyValuePair<IntPtr, WindowTracker> window in _windowList)
+				if (_trackerList.ContainsKey(hWnd))
 				{
-					if (!windowList.Contains(window.Key))
-					{
-						dropList.Add(window.Key);
-					}
+					_trackerList[hWnd].CheckPlacement(_display);
 				}
-
-				foreach (IntPtr hWnd in dropList)
+				else
 				{
-					_windowList.Remove(hWnd);
+					_trackerList.Remove(hWnd);
 				}
 			}
 
@@ -183,7 +172,7 @@ namespace MonitorWatch
 				{
 					if ((GetWindowLong(hWnd, GWL_STYLE) & WS_EX_WINDOW) == WS_EX_WINDOW)
 					{
-						windowList.Add(hWnd);
+						windowList.Insert(0, hWnd);
 					}
 					return true;
 				},
@@ -236,6 +225,8 @@ namespace MonitorWatch
 			lblDisplayCount.Text = counter.ToString();
 
 			_display = display.ToString();
+
+			OnTimer(null, null);
 		}
 
 		private class WindowTracker
@@ -281,10 +272,8 @@ namespace MonitorWatch
 						windowPlacement.flags = WPF_ASYNCWINDOWPLACEMENT;
 						windowPlacement.showCmd = ShowWindowCommands.Restore;
 						SetWindowPlacement(_hWnd, ref windowPlacement);
-						UpdateWindow(_hWnd);
 						windowPlacement.showCmd = ShowWindowCommands.ShowMaximized;
 						SetWindowPlacement(_hWnd, ref windowPlacement);
-						GetWindowPlacement(_hWnd, ref windowPlacement);
 					}
 
 					_placement.Add(display, windowPlacement);
@@ -309,6 +298,13 @@ namespace MonitorWatch
 				}
 
 				_display = display;
+			}
+
+			public override string ToString()
+			{
+				WINDOWPLACEMENT windowPlacement = _placement[_display];
+
+				return windowPlacement.showCmd + "@" + windowPlacement.rcNormalPosition.Left + "x" + windowPlacement.rcNormalPosition.Top;
 			}
 		}
 	}
