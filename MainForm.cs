@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Text;
+using System.Text.Json;
 using System.Windows.Forms;
 
 namespace MonitorWatch
@@ -12,166 +15,125 @@ namespace MonitorWatch
 	{
 		const int WM_DISPLAYCHANGE = 0x007e;
 
-		const int GWL_STYLE = -16;
+		const uint MONITORINFO_PRIMARY = 0x0001;
 
-		const uint WS_VISIBLE = 0x10000000;
-		const uint WS_SYSMENU = 0x00080000;
-		const uint WS_CAPTION = 0x00C00000;
-		const uint WS_EX_WINDOW = WS_VISIBLE | WS_CAPTION;
-
-		const uint WPF_ASYNCWINDOWPLACEMENT = 0x0004;
-
-		public enum ShowWindowCommands : int
-		{
-			Hide = 0,
-			ShowNormal = 1,
-			ShowMinimized = 2,
-			ShowMaximized = 3,
-			ShowNoActivate = 4,
-			Maximize = 5,
-			Minimize = 6,
-			ShowMiniNoActivate = 7,
-			ShowNA = 8,
-			Restore = 9
-		}
-
-		public struct WINDOWPLACEMENT
+		private struct MONITORINFOEX
 		{
 			public int length;
+			public RECT rcMonitor;
+			public RECT rcWorkArea;
 			public uint flags;
-			public ShowWindowCommands showCmd;
-			public Point ptMinPosition;
-			public Point ptMaxPosition;
-			public Rectangle rcNormalPosition;
+			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+			public string lpDeviceName;
 		}
 
-		private struct Rect
-		{
-			public int left;
-			public int top;
-			public int right;
-			public int bottom;
-		}
+		[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+		private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
 
-		[DllImport("user32")]
+		[DllImport("user32", SetLastError = true)]
 		private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lpRect, MonitorEnumProc callback, int dwData);
-		private delegate bool MonitorEnumProc(IntPtr hDesktop, IntPtr hdc, ref Rect pRect, int dwData);
+		private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdc, ref RECT pRect, int dwData);
 
-		[DllImport("user32.dll")]
-		private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
-		private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-		[DllImport("user32.dll", SetLastError = true)]
-		private static extern UInt32 GetWindowLong(IntPtr hWnd, int nIndex);
-
-		[DllImport("user32.dll", SetLastError = true)]
-		private static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
-
-		[DllImport("user32.dll", SetLastError = true)]
-		private static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
-
-		[DllImport("user32.dll")]
-		static extern bool UpdateWindow(IntPtr hWnd);
-
-
-		private List<IntPtr> _windowList = new List<IntPtr>();
-		private Dictionary<IntPtr, WindowTracker> _trackerList = new Dictionary<IntPtr, WindowTracker>();
-		private Timer _timer = new Timer();
-		private int[] __intervals = new int[] { 250, 500, 1000, 2000, 5000, 10000, 30000, 60000 };
-		private string _display = null;
+		private Dictionary<string, WindowTracker> _displaySets = new Dictionary<string, WindowTracker>();
+		private string _displaySet = null;
 
 		public MainForm()
 		{
 			InitializeComponent();
 
-			cmbInterval.SelectedIndex = 2;
+			var version = typeof(MainForm).Assembly.GetName().Version;
+
+			MnuAbout.Text = "MonitorWatch v" + version.Major + "." + version.Minor + "." + version.Build;
+
 			WindowState = FormWindowState.Minimized;
 		}
 
 		private void MainForm_Load(object sender, EventArgs e)
 		{
-			UpdateDisplay();
+			if (File.Exists(".\\MonitorWatch.json"))
+			{
+				_displaySets = JsonSerializer.Deserialize<SaveFormat>(
+						File.ReadAllText(".\\MonitorWatch.json", Encoding.UTF8)
+					)
+					.DisplaySets
+						.Select(keyValue =>
+							new KeyValuePair<string, WindowTracker>(
+								keyValue.Key,
+								new WindowTracker(keyValue.Value)
+							)
+						)
+						.ToDictionary(
+							keyValue => keyValue.Key,
+							keyValue => keyValue.Value
+						);
+			}
 
-			_timer.Tick += new EventHandler(OnTimer);
-			_timer.Interval = __intervals[cmbInterval.SelectedIndex];
-			_timer.Enabled = true;
+			UpdateDisplaySet();
 		}
 
-		private void cmbInterval_SelectedIndexChanged(object sender, EventArgs e)
+		private void MainForm_FormClosing(object sender, FormClosingEventArgs closingEvent)
 		{
-			_timer.Interval = __intervals[cmbInterval.SelectedIndex];
+			if (closingEvent.CloseReason == CloseReason.UserClosing)
+			{
+				WindowState = FormWindowState.Minimized;
+				closingEvent.Cancel = true;
+			}
 		}
 
-		private void btnClose_Click(object sender, EventArgs e)
+		private void MainForm_Deactivate(object sender, EventArgs e)
 		{
-			if (MessageBox.Show("Close MonitorWatch?", "MonitorWatch", MessageBoxButtons.YesNo) == DialogResult.Yes)
+			WindowState = FormWindowState.Minimized;
+		}
+
+		private void MnuSave_Click(object sender, EventArgs e)
+		{
+			_displaySets[_displaySet].Save();
+
+			File.WriteAllText(
+				".\\MonitorWatch.json",
+				JsonSerializer.Serialize(
+					new SaveFormat()
+					{
+						Version = "v1.0",
+						DisplaySets =
+							_displaySets.ToDictionary(
+								item => item.Key,
+								item => item.Value.Export()
+							)
+					},
+					new JsonSerializerOptions()
+					{
+						IncludeFields = true
+					}
+				),
+				Encoding.UTF8
+			);
+		}
+
+		private void MnuRestore_Click(object sender, EventArgs e)
+		{
+			_displaySets[_displaySet].Restore();
+		}
+
+		private void MnuAbout_Click(object sender, EventArgs e)
+		{
+			Process.Start("https://gitlab.com/mhk76/MonitorWatch");
+		}
+
+		private void MnuExit_Click(object sender, EventArgs e)
+		{
+			if (
+				MessageBox.Show(
+					"\tClose MonitorWatch?\t",
+					"MonitorWatch",
+					MessageBoxButtons.YesNo,
+					MessageBoxIcon.Question
+				)
+				== DialogResult.Yes
+			)
 			{
 				Application.Exit();
 			}
-		}
-
-		private void btnHide_Click(object sender, EventArgs e)
-		{
-			WindowState = FormWindowState.Minimized;
-			Hide();
-		}
-
-		private void notifyIcon_Click(object sender, EventArgs e)
-		{
-			WindowState = FormWindowState.Normal;
-			Show();
-		}
-
-		private void OnTimer(object sender, EventArgs e)
-		{
-			List<IntPtr> _windowList = FindWindows();
-
-			foreach (IntPtr hWnd in _windowList)
-			{
-				if (!_trackerList.ContainsKey(hWnd))
-				{
-					_trackerList.Add(
-						hWnd,
-						new WindowTracker(
-							_display,
-							hWnd
-						)
-					);
-				}
-			}
-
-			foreach (IntPtr hWnd in _windowList)
-			{
-				if (_trackerList.ContainsKey(hWnd))
-				{
-					_trackerList[hWnd].CheckPlacement(_display);
-				}
-				else
-				{
-					_trackerList.Remove(hWnd);
-				}
-			}
-
-			lblWindowCount.Text = _windowList.Count.ToString();
-		}
-
-		public static List<IntPtr> FindWindows()
-		{
-			List<IntPtr> windowList = new List<IntPtr>();
-
-			EnumWindows(
-				delegate (IntPtr hWnd, IntPtr lParam)
-				{
-					if ((GetWindowLong(hWnd, GWL_STYLE) & WS_EX_WINDOW) == WS_EX_WINDOW)
-					{
-						windowList.Insert(0, hWnd);
-					}
-					return true;
-				},
-				IntPtr.Zero
-			);
-
-			return windowList;
 		}
 
 		[PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
@@ -181,123 +143,73 @@ namespace MonitorWatch
 			{
 				case WM_DISPLAYCHANGE:
 				{
-					UpdateDisplay();
+					UpdateDisplaySet();
 					break;
 				}
 			}
 			base.WndProc(ref message);
-		}
+		} // WndProc()
 
-		private void UpdateDisplay()
+		private void UpdateDisplaySet()
 		{
-			StringBuilder display = new StringBuilder();
+			MONITORINFOEX monitorInfo = new MONITORINFOEX();
+			List<string> displaySetId = new List<string>();
 			int counter = 0;
+
+			monitorInfo.length = 104;
 
 			EnumDisplayMonitors(
 				IntPtr.Zero,
 				IntPtr.Zero,
-				delegate (IntPtr hDesktop, IntPtr hdc, ref Rect pRect, int dwData)
+				delegate (IntPtr hMonitor, IntPtr hdc, ref RECT pRect, int dwData)
 				{
-					display.Append(pRect.left);
-					display.Append('x');
-					display.Append(pRect.top);
-					display.Append('-');
-					display.Append(pRect.right);
-					display.Append('x');
-					display.Append(pRect.bottom);
-					display.Append(';');
+					GetMonitorInfo(hMonitor, ref monitorInfo);
 
-					++counter;
+					StringBuilder id = new StringBuilder();
+
+					if ((monitorInfo.flags & MONITORINFO_PRIMARY) == MONITORINFO_PRIMARY)
+					{
+						id.Append("(P)");
+					}
+					id.Append(++counter);
+					id.Append(':');
+					id.Append(pRect.right);
+					id.Append('×');
+					id.Append(pRect.bottom);
+					if (pRect.left != 0 || pRect.top != 0)
+					{
+						id.Append('@');
+						id.Append(pRect.left);
+						id.Append('×');
+						id.Append(pRect.top);
+					}
+
+					displaySetId.Add(id.ToString());
 
 					return true;
 				},
 				0
 			);
 
-			lblDisplayCount.Text = counter.ToString();
+			_displaySet = string.Join(", ", displaySetId);
 
-			_display = display.ToString();
+			if (_displaySets.ContainsKey(_displaySet))
+			{
+				_displaySets[_displaySet].Save();
+			}
+			else
+			{
+				_displaySets.Add(_displaySet, new WindowTracker());
+			}
 
-			OnTimer(null, null);
-		}
+			MnuCurrent.Text = _displaySet;
+		} // UpdateDisplaySet()
 
-		private class WindowTracker
+		private class SaveFormat
 		{
-			private IntPtr _hWnd = IntPtr.Zero;
-			private string _display = null;
-			private Dictionary<string, WINDOWPLACEMENT> _placement = new Dictionary<string, WINDOWPLACEMENT>();
+			public string Version { get; set; } = "v1.0";
+			public Dictionary<string, WindowPosition[]> DisplaySets { get; set; } = new Dictionary<string, WindowPosition[]>();
+		} // class SaveFormat
 
-			public WindowTracker(string display, IntPtr hWnd)
-			{
-				_hWnd = hWnd;
-
-				CheckPlacement(display);
-			}
-
-			public void CheckPlacement()
-			{
-				CheckPlacement(_display);
-			}
-
-			public void CheckPlacement(string display)
-			{
-				WINDOWPLACEMENT windowPlacement;
-
-				if (_display == display)
-				{
-					windowPlacement = new WINDOWPLACEMENT();
-
-					GetWindowPlacement(_hWnd, ref windowPlacement);
-
-					_placement[display] = windowPlacement;
-					return;
-				}
-
-				if (_display == null || !_placement.ContainsKey(display))
-				{
-					windowPlacement = new WINDOWPLACEMENT();
-
-					GetWindowPlacement(_hWnd, ref windowPlacement);
-
-					if (_display != null && windowPlacement.showCmd == ShowWindowCommands.ShowMaximized)
-					{
-						windowPlacement.flags = WPF_ASYNCWINDOWPLACEMENT;
-						windowPlacement.showCmd = ShowWindowCommands.Restore;
-						SetWindowPlacement(_hWnd, ref windowPlacement);
-						windowPlacement.showCmd = ShowWindowCommands.ShowMaximized;
-						SetWindowPlacement(_hWnd, ref windowPlacement);
-					}
-
-					_placement.Add(display, windowPlacement);
-					_display = display;
-					return;
-				}
-
-				windowPlacement = _placement[display];
-
-				if (windowPlacement.showCmd == ShowWindowCommands.ShowMaximized)
-				{
-					windowPlacement.flags = WPF_ASYNCWINDOWPLACEMENT;
-					windowPlacement.showCmd = ShowWindowCommands.Restore;
-					SetWindowPlacement(_hWnd, ref windowPlacement);
-					UpdateWindow(_hWnd);
-					windowPlacement.showCmd = ShowWindowCommands.ShowMaximized;
-					SetWindowPlacement(_hWnd, ref windowPlacement);
-				}
-				else
-				{
-					SetWindowPlacement(_hWnd, ref windowPlacement);
-				}
-
-				_display = display;
-			}
-
-			public override string ToString()
-			{
-				WINDOWPLACEMENT windowPlacement = _placement[_display];
-
-				return windowPlacement.showCmd + "@" + windowPlacement.rcNormalPosition.Left + "x" + windowPlacement.rcNormalPosition.Top;
-			}
-		}
-	}
+	} // class MainForm
 }

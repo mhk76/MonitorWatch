@@ -1,4 +1,6 @@
-﻿namespace MonitorWatch
+﻿using System.Reflection;
+
+namespace MonitorWatch
 {
 	partial class MainForm
 	{
@@ -30,157 +32,132 @@
 		{
 			this.components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
-			this.lblInterval = new System.Windows.Forms.Label();
-			this.cmbInterval = new System.Windows.Forms.ComboBox();
-			this.btnHide = new System.Windows.Forms.Button();
-			this.btnClose = new System.Windows.Forms.Button();
-			this.lblWindowCount = new System.Windows.Forms.Label();
-			this.lblTracking = new System.Windows.Forms.Label();
-			this.lblWindows = new System.Windows.Forms.Label();
-			this.lblDisplayCount = new System.Windows.Forms.Label();
-			this.lblDisplays = new System.Windows.Forms.Label();
-			this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
+			this.NotifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
+			this.CtxPopup = new System.Windows.Forms.ContextMenuStrip(this.components);
+			this.MnuRestore = new System.Windows.Forms.ToolStripMenuItem();
+			this.MnuSave = new System.Windows.Forms.ToolStripMenuItem();
+			this.MnuCurrent = new System.Windows.Forms.ToolStripMenuItem();
+			this.menuSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+			this.MnuAbout = new System.Windows.Forms.ToolStripMenuItem();
+			this.menuSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+			this.MnuExit = new System.Windows.Forms.ToolStripMenuItem();
+			this.lblVersion = new System.Windows.Forms.Label();
+			this.CtxPopup.SuspendLayout();
 			this.SuspendLayout();
 			// 
-			// lblInterval
+			// NotifyIcon
 			// 
-			this.lblInterval.AutoSize = true;
-			this.lblInterval.Location = new System.Drawing.Point(12, 9);
-			this.lblInterval.Name = "lblInterval";
-			this.lblInterval.Size = new System.Drawing.Size(72, 13);
-			this.lblInterval.TabIndex = 0;
-			this.lblInterval.Text = "Track interval";
+			this.NotifyIcon.ContextMenuStrip = this.CtxPopup;
+			this.NotifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("NotifyIcon.Icon")));
+			this.NotifyIcon.Text = "MonitorWatch";
+			this.NotifyIcon.Visible = true;
 			// 
-			// cmbInterval
+			// CtxPopup
 			// 
-			this.cmbInterval.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.cmbInterval.FormattingEnabled = true;
-			this.cmbInterval.Items.AddRange(new object[] {
-            "every 250 milliseconds",
-            "every 500 milliseconds",
-            "every 1 second",
-            "every 2 seconds",
-            "every 5 seconds",
-            "every 10 seconds",
-            "every 30 seconds",
-            "every 1 minute"});
-			this.cmbInterval.Location = new System.Drawing.Point(12, 25);
-			this.cmbInterval.Name = "cmbInterval";
-			this.cmbInterval.Size = new System.Drawing.Size(264, 21);
-			this.cmbInterval.TabIndex = 1;
-			this.cmbInterval.SelectedIndexChanged += new System.EventHandler(this.cmbInterval_SelectedIndexChanged);
+			this.CtxPopup.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.MnuCurrent,
+            this.MnuRestore,
+            this.MnuSave,
+            this.menuSeparator1,
+            this.MnuAbout,
+            this.menuSeparator2,
+            this.MnuExit});
+			this.CtxPopup.Name = "ctxPopup";
+			this.CtxPopup.Size = new System.Drawing.Size(210, 148);
 			// 
-			// btnHide
+			// MnuRestore
 			// 
-			this.btnHide.Location = new System.Drawing.Point(201, 91);
-			this.btnHide.Name = "btnHide";
-			this.btnHide.Size = new System.Drawing.Size(75, 23);
-			this.btnHide.TabIndex = 2;
-			this.btnHide.Text = "Hide";
-			this.btnHide.UseVisualStyleBackColor = true;
-			this.btnHide.Click += new System.EventHandler(this.btnHide_Click);
+			this.MnuRestore.Name = "MnuRestore";
+			this.MnuRestore.Size = new System.Drawing.Size(209, 22);
+			this.MnuRestore.Text = "Restore window positions";
+			this.MnuRestore.Click += new System.EventHandler(this.MnuRestore_Click);
 			// 
-			// btnClose
+			// MnuSave
 			// 
-			this.btnClose.Location = new System.Drawing.Point(120, 91);
-			this.btnClose.Name = "btnClose";
-			this.btnClose.Size = new System.Drawing.Size(75, 23);
-			this.btnClose.TabIndex = 3;
-			this.btnClose.Text = "Close";
-			this.btnClose.UseVisualStyleBackColor = true;
-			this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
+			this.MnuSave.Name = "MnuSave";
+			this.MnuSave.Size = new System.Drawing.Size(209, 22);
+			this.MnuSave.Text = "Save window positions";
+			this.MnuSave.Click += new System.EventHandler(this.MnuSave_Click);
 			// 
-			// lblWindowCount
+			// MnuCurrent
 			// 
-			this.lblWindowCount.Location = new System.Drawing.Point(67, 49);
-			this.lblWindowCount.Name = "lblWindowCount";
-			this.lblWindowCount.Size = new System.Drawing.Size(25, 13);
-			this.lblWindowCount.TabIndex = 4;
-			this.lblWindowCount.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+			this.MnuCurrent.Enabled = false;
+			this.MnuCurrent.Name = "MnuCurrent";
+			this.MnuCurrent.Size = new System.Drawing.Size(209, 22);
+			this.MnuCurrent.Text = "CurrentDisplayset";
 			// 
-			// lblTracking
+			// menuSeparator1
 			// 
-			this.lblTracking.AutoSize = true;
-			this.lblTracking.Location = new System.Drawing.Point(12, 49);
-			this.lblTracking.Name = "lblTracking";
-			this.lblTracking.Size = new System.Drawing.Size(49, 13);
-			this.lblTracking.TabIndex = 5;
-			this.lblTracking.Text = "Tracking";
+			this.menuSeparator1.Name = "menuSeparator1";
+			this.menuSeparator1.Size = new System.Drawing.Size(206, 6);
 			// 
-			// lblWindows
+			// MnuAbout
 			// 
-			this.lblWindows.AutoSize = true;
-			this.lblWindows.Location = new System.Drawing.Point(98, 49);
-			this.lblWindows.Name = "lblWindows";
-			this.lblWindows.Size = new System.Drawing.Size(63, 13);
-			this.lblWindows.TabIndex = 6;
-			this.lblWindows.Text = "windows on";
+			this.MnuAbout.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Underline);
+			this.MnuAbout.ForeColor = System.Drawing.SystemColors.HotTrack;
+			this.MnuAbout.Name = "MnuAbout";
+			this.MnuAbout.Size = new System.Drawing.Size(209, 22);
+			this.MnuAbout.Text = "MonitorWatch vX.X.X";
+			this.MnuAbout.Click += new System.EventHandler(this.MnuAbout_Click);
 			// 
-			// lblDisplayCount
+			// menuSeparator2
 			// 
-			this.lblDisplayCount.Location = new System.Drawing.Point(160, 49);
-			this.lblDisplayCount.Name = "lblDisplayCount";
-			this.lblDisplayCount.Size = new System.Drawing.Size(19, 13);
-			this.lblDisplayCount.TabIndex = 7;
-			this.lblDisplayCount.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+			this.menuSeparator2.Name = "menuSeparator2";
+			this.menuSeparator2.Size = new System.Drawing.Size(206, 6);
 			// 
-			// lblDisplays
+			// MnuExit
 			// 
-			this.lblDisplays.AutoSize = true;
-			this.lblDisplays.Location = new System.Drawing.Point(185, 49);
-			this.lblDisplays.Name = "lblDisplays";
-			this.lblDisplays.Size = new System.Drawing.Size(44, 13);
-			this.lblDisplays.TabIndex = 8;
-			this.lblDisplays.Text = "displays";
+			this.MnuExit.Name = "MnuExit";
+			this.MnuExit.Size = new System.Drawing.Size(209, 22);
+			this.MnuExit.Text = "Exit";
+			this.MnuExit.Click += new System.EventHandler(this.MnuExit_Click);
 			// 
-			// notifyIcon
+			// lblVersion
 			// 
-			this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
-			this.notifyIcon.Text = "MonitorWatch";
-			this.notifyIcon.Visible = true;
-			this.notifyIcon.Click += new System.EventHandler(this.notifyIcon_Click);
-			this.notifyIcon.MouseClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_Click);
+			this.lblVersion.AutoSize = true;
+			this.lblVersion.ForeColor = System.Drawing.SystemColors.ControlLight;
+			this.lblVersion.Location = new System.Drawing.Point(13, 13);
+			this.lblVersion.Name = "lblVersion";
+			this.lblVersion.Size = new System.Drawing.Size(0, 13);
+			this.lblVersion.TabIndex = 0;
 			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(288, 126);
-			this.ControlBox = false;
-			this.Controls.Add(this.lblDisplays);
-			this.Controls.Add(this.lblDisplayCount);
-			this.Controls.Add(this.lblWindows);
-			this.Controls.Add(this.lblTracking);
-			this.Controls.Add(this.lblWindowCount);
-			this.Controls.Add(this.btnClose);
-			this.Controls.Add(this.btnHide);
-			this.Controls.Add(this.cmbInterval);
-			this.Controls.Add(this.lblInterval);
+			this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
+			this.ClientSize = new System.Drawing.Size(1056, 250);
+			this.Controls.Add(this.lblVersion);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Location = new System.Drawing.Point(51, 101);
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "MainForm";
+			this.ShowIcon = false;
+			this.ShowInTaskbar = false;
+			this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
+			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "MonitorWatch";
+			this.Deactivate += new System.EventHandler(this.MainForm_Deactivate);
+			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
 			this.Load += new System.EventHandler(this.MainForm_Load);
+			this.CtxPopup.ResumeLayout(false);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
 		}
 
 		#endregion
-
-		private System.Windows.Forms.Label lblInterval;
-		private System.Windows.Forms.ComboBox cmbInterval;
-		private System.Windows.Forms.Button btnHide;
-		private System.Windows.Forms.Button btnClose;
-		private System.Windows.Forms.Label lblWindowCount;
-		private System.Windows.Forms.Label lblTracking;
-		private System.Windows.Forms.Label lblWindows;
-		private System.Windows.Forms.Label lblDisplayCount;
-		private System.Windows.Forms.Label lblDisplays;
-		private System.Windows.Forms.NotifyIcon notifyIcon;
+		private System.Windows.Forms.NotifyIcon NotifyIcon;
+		private System.Windows.Forms.Label lblVersion;
+		private System.Windows.Forms.ContextMenuStrip CtxPopup;
+		private System.Windows.Forms.ToolStripMenuItem MnuRestore;
+		private System.Windows.Forms.ToolStripMenuItem MnuSave;
+		private System.Windows.Forms.ToolStripSeparator menuSeparator1;
+		private System.Windows.Forms.ToolStripMenuItem MnuAbout;
+		private System.Windows.Forms.ToolStripSeparator menuSeparator2;
+		private System.Windows.Forms.ToolStripMenuItem MnuExit;
+		private System.Windows.Forms.ToolStripMenuItem MnuCurrent;
 	}
 }
 
